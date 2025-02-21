@@ -1,0 +1,151 @@
+---
+title: "Dataset"
+output: pdf_document
+date: "2025-01-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Install the jsonlite package
+install.packages("jsonlite")
+
+# Load the jsonlite package
+library(jsonlite)
+
+# Read the JSON file into R
+amazon_tweet <- fromJSON("amazon.json")
+apple_tweet <- fromJSON("apple.json")
+facebook_tweet <- fromJSON("facebook.json")
+google_tweet <- fromJSON("google.json")
+```
+
+```{r}
+install.packages("dplyr")
+library(dplyr)
+
+# Remove the 'id' column from all datasets
+amazon_tweet <- amazon_tweet %>% select(-id)
+apple_tweet <- apple_tweet %>% select(-id)
+facebook_tweet <- facebook_tweet %>% select(-id)
+google_tweet <- google_tweet %>% select(-id)
+```
+
+```{r}
+# Check the structure of the loaded data
+str(amazon_tweet)
+```
+
+```{r}
+# Convert the 'date' column to a readable date format
+amazon_tweet$date <- as.POSIXct(amazon_tweet$date / 1000, origin = "1970-01-01", tz = "UTC")
+apple_tweet$date <- as.POSIXct(apple_tweet$date / 1000, origin = "1970-01-01", tz = "UTC")
+facebook_tweet$date <- as.POSIXct(facebook_tweet$date / 1000, origin = "1970-01-01", tz = "UTC")
+google_tweet$date <- as.POSIXct(google_tweet$date / 1000, origin = "1970-01-01", tz = "UTC")
+```
+
+
+##
+# Save the data frame to a CSV file
+write.csv(amazon_data, "amazon_tweets.csv", row.names = FALSE)
+write.csv(apple_data, "apple_tweets.csv", row.names = FALSE)
+
+
+```{r}
+# Load necessary libraries
+library(tidyquant)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+
+# Define a function to get stock data and process it
+get_stock_data <- function(ticker, start_date, end_date) {
+  stock_data <- tq_get(ticker, from = start_date, to = end_date) %>%
+    dplyr::select(symbol, date, adjusted) %>%
+    tidyr::pivot_wider(names_from = symbol, values_from = adjusted) %>%
+    group_by(week = floor_date(date, "week")) %>%
+    summarize(price = mean(get(ticker), na.rm = TRUE))  # Calculate weekly average price
+  
+  # Convert time series data into a data frame for easier viewing
+  return(data.frame(week = stock_data$week, price = stock_data$price))
+}
+
+# Set date range for Trump's presidency
+start_date <- "2017-01-20"
+end_date <- "2021-01-20"
+
+# Get stock data for each company
+apple_stock <- get_stock_data("AAPL", start_date, end_date)
+amazon_stock <- get_stock_data("AMZN", start_date, end_date)
+facebook_stock <- get_stock_data("META", start_date, end_date) 
+google_stock <- get_stock_data("GOOGL", start_date, end_date)
+
+# Print the data for each company
+print("Apple Stock Data:")
+print(apple_stock)
+
+print("Amazon Stock Data:")
+print(amazon_stock)
+
+print("Facebook Stock Data:")
+print(facebook_stock)
+
+print("Google Stock Data:")
+print(google_stock)
+
+```
+
+
+amazon, * 46 tweets/rt
+apple, * 21 tweets/rt
+
+facebook ,* 37 tweets/rt
+
+Google * 35 tweets/rt
+
+```{r}
+library(ggplot2)
+
+# Plot Amazon Stock Price
+ggplot(amazon_stock, aes(x = week, y = price)) +
+  geom_line(color = "blue") +
+  labs(title = "Amazon Stock Price Over Time",
+       x = "Date",
+       y = "Stock Price (USD)") +
+  theme_minimal()
+
+# Plot Apple Stock Price
+ggplot(apple_stock, aes(x = week, y = price)) +
+  geom_line(color = "red") +
+  labs(title = "Apple Stock Price Over Time",
+       x = "Date",
+       y = "Stock Price (USD)") +
+  theme_minimal()
+
+# Plot Facebook Stock Price
+ggplot(facebook_stock, aes(x = week, y = price)) +
+  geom_line(color = "green") +
+  labs(title = "Facebook Stock Price Over Time",
+       x = "Date",
+       y = "Stock Price (USD)") +
+  theme_minimal()
+
+# Plot Google Stock Price
+ggplot(google_stock, aes(x = week, y = price)) +
+  geom_line(color = "purple") +
+  labs(title = "Google Stock Price Over Time",
+       x = "Date",
+       y = "Stock Price (USD)") +
+  theme_minimal()
+
+
+
+```
+
+
+
+
+
+
