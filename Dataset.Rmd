@@ -12,6 +12,9 @@ knitr::opts_chunk$set(echo = TRUE)
 # Install the jsonlite package
 install.packages("jsonlite")
 
+install.packages("dplyr")
+library(dplyr)
+
 # Load the jsonlite package
 library(jsonlite)
 
@@ -23,8 +26,8 @@ google_tweet <- fromJSON("google.json")
 ```
 
 ```{r}
-install.packages("dplyr")
-library(dplyr)
+
+
 
 # Remove the 'id' column from all datasets
 amazon_tweet <- amazon_tweet %>% select(-id)
@@ -37,13 +40,87 @@ google_tweet <- google_tweet %>% select(-id)
 # Check the structure of the loaded data
 str(amazon_tweet)
 ```
-
 ```{r}
-# Convert the 'date' column to a readable date format
+# Convert the large numeric date (Unix timestamp in milliseconds) to a readable date format
 amazon_tweet$date <- as.POSIXct(amazon_tweet$date / 1000, origin = "1970-01-01", tz = "UTC")
 apple_tweet$date <- as.POSIXct(apple_tweet$date / 1000, origin = "1970-01-01", tz = "UTC")
 facebook_tweet$date <- as.POSIXct(facebook_tweet$date / 1000, origin = "1970-01-01", tz = "UTC")
 google_tweet$date <- as.POSIXct(google_tweet$date / 1000, origin = "1970-01-01", tz = "UTC")
+
+```
+
+```{r}
+# Convert the 'date' column to a readable date format
+amazon_tweet$date <- format(as.Date(amazon_tweet$date), "%Y-%m-%d")
+apple_tweet$date <- format(as.Date(apple_tweet$date), "%Y-%m-%d")
+facebook_tweet$date <- format(as.Date(facebook_tweet$date), "%Y-%m-%d")
+google_tweet$date <- format(as.Date(google_tweet$date), "%Y-%m-%d")
+
+
+
+```
+
+
+
+
+
+```{r}
+# Assign Sentiment variable
+
+
+amazon_sentiment <- c("Neutral", "Neutral", "Negative", "Negative", "Positive", "Negative", "Negative", "Negative", "Positive", "Negative",
+                
+"Neutral","Negative", "Negative", "Negative", "Negative", "Negative", "Negative", "Negative", "Neutral", "Neutral",
+
+"Neutral", "Neutral", "Negative", "Negative", "Negative", "Negative", "Negative", "Positive", "Positive", "Negative", 
+
+"Negative", "Negative", "Negative", "Negative", "Negative", "Negative", "Negative", "Negative", "Negative", "Negative",
+
+"Negative", "Negative", "Negative", "Negative", "Negative", "Negative")
+
+apple_sentiment <- c("Neutral", "Neutral","Positive", "Negative", "Negative", "Positive", "Positive", "Neutral", "Positive", "Positive", 
+                     
+  "Positive", "Negative", "Negative", "Neutral", "Neutral", "Neutral", "Negative", "Positive", "Neutral", "Positive", 
+  
+  "Positive")
+
+facebook_sentiment <- c("Neutral", "Neutral","Negative", "Negative", "Negative", "Negative", "Negative", "Negative", "Negative", "Neutral", 
+                        
+"Negative", "Neutral", "Positive", "Neutral", "Neutral", "Positive", "Negative", "Negative", "Neutral", "Negative",
+
+"Negative","Negative", "Negative", "Negative", "Negative", "Negative", "Negative", "Negative", "Neutral", "Neutral",
+
+"Negative", "Negative", "Negative", "Negative", "Negative", "Positive","Negative" )
+
+google_sentiment <- c("Negative", "Negative", "Neutral", "Neutral", "Negative", "Negative", "Negative", "Negative", "Positive", "Negative", 
+                      
+"Negative", "Negative", "Negative", "Negative", "Neutral", "Negative", "Negative", "Negative", "Neutral", "Negative",
+
+"Negative", "Negative", "Positive", "Positive", "Negative", "Negative", "Negative", "Negative", "Neutral", "Positive",
+
+"Negative", "Negative", "Negative", "Negative", "Negative")
+
+
+# Convert Sentiment Values into Tweet data
+amazon_tweet$Sentiment <- amazon_sentiment
+apple_tweet$Sentiment <- apple_sentiment
+facebook_tweet$Sentiment <- facebook_sentiment
+google_tweet$Sentiment <- google_sentiment 
+
+# Convert the sentiment labels to numerical values: 
+# 1 for Positive, 0 for Neutral, and -1 for Negative
+amazon_tweet$Sentiment <- ifelse(amazon_tweet$Sentiment == "Positive", 1,
+                                 ifelse(amazon_tweet$Sentiment == "Neutral", 0, -1))
+
+apple_tweet$Sentiment <- ifelse(apple_tweet$Sentiment == "Positive", 1,
+                                ifelse(apple_tweet$Sentiment == "Neutral", 0, -1))
+
+facebook_tweet$Sentiment <- ifelse(facebook_tweet$Sentiment == "Positive", 1,
+                                   ifelse(facebook_tweet$Sentiment == "Neutral", 0, -1))
+
+google_tweet$Sentiment <- ifelse(google_tweet$Sentiment == "Positive", 1,
+                                 ifelse(google_tweet$Sentiment == "Neutral", 0, -1))
+
 ```
 
 
@@ -82,18 +159,7 @@ amazon_stock <- get_stock_data("AMZN", start_date, end_date)
 facebook_stock <- get_stock_data("META", start_date, end_date) 
 google_stock <- get_stock_data("GOOGL", start_date, end_date)
 
-# Print the data for each company
-print("Apple Stock Data:")
-print(apple_stock)
 
-print("Amazon Stock Data:")
-print(amazon_stock)
-
-print("Facebook Stock Data:")
-print(facebook_stock)
-
-print("Google Stock Data:")
-print(google_stock)
 
 ```
 
@@ -104,6 +170,111 @@ apple, * 21 tweets/rt
 facebook ,* 37 tweets/rt
 
 Google * 35 tweets/rt
+
+
+
+```{r}
+library(dplyr)
+library(lubridate)
+
+# Convert the date column in amazon_tweet to Date format
+amazon_merged_data <- amazon_tweet %>%
+  mutate(date = as.Date(date, format = "%Y-%m-%d")) %>%
+  # Add a 'week' column for each tweet based on its 'date'
+  mutate(week = floor_date(date, unit = "week")) %>%
+  # Join the tweet data with the stock data by the week
+  left_join(amazon_stock %>%
+              mutate(week = as.Date(week, format = "%Y-%m-%d")), 
+            by = "week")
+
+# View the result
+head(amazon_merged_data)
+
+
+```
+
+```{r}
+# Assuming amazon_tweet has the sentiment and date columns
+library(ggplot2)
+
+# Ensure that 'date' is in Date format (if it's not already)
+amazon_tweet$date <- as.Date(amazon_tweet$date)
+
+# Create the line plot
+sentiment_plot <- ggplot(amazon_tweet, aes(x = date, y = Sentiment)) +
+  geom_line(color = "blue") +  # Line plot of sentiment scores
+  geom_point(color = "red", size = 2) +  # Points to highlight sentiment changes
+  ggtitle("Sentiment Score Over Time") +
+  xlab("Date") +  # Use 'Date' for clarity
+  ylab("Sentiment") + 
+  scale_y_continuous(breaks = c(-1, 0, 1), labels = c("Negative", "Neutral", "Positive")) +  # Adjust labels
+  theme_minimal()  # Clean theme
+
+
+# Frequency of Each Sentiment Plot
+sentiment_frequency <- amazon_tweet %>%
+  count(Sentiment) %>%
+  mutate(Sentiment = factor(Sentiment, levels = c(-1, 0, 1), labels = c("Negative", "Neutral", "Positive")))
+
+frequency_plot <- ggplot(sentiment_frequency, aes(x = Sentiment, y = n, fill = Sentiment)) +
+  geom_bar(stat = "identity") +  # Bar plot of sentiment frequencies
+  ggtitle("Sentiment Frequency") +
+  xlab("Sentiment") + 
+  ylab("Frequency") +
+  theme_minimal()
+
+# Display both plots side by side
+library(gridExtra)
+grid.arrange(sentiment_plot, frequency_plot, ncol = 2)
+```
+
+
+
+Correlation
+```{r}
+# Correlation between sentiment and stock price
+cor(amazon_merged_data$Sentiment, amazon_merged_data$price)
+
+```
+
+VAR
+```{r}
+library(vars)
+
+# Assuming weekly_data contains both sentiment and stock price columns
+weekly_ts <- ts(amazon_merged_data[, c("Sentiment", "price")], start = c(2017, 1), frequency = 52)
+
+# Fit VAR model with 2 lags
+var_model <- VAR(weekly_ts, p = 2)
+summary(var_model)
+
+# Check causality from sentiment to stock price
+causality(var_model, cause = "Sentiment")
+```
+
+```{r}
+amazon_merged_data = amazon_merged_data %>% mutate(price_change = price - lag(price, 1),
+                                                   sent_2 = Sentiment - lag(Sentiment,1),
+                                                   favorites = as.numeric(favorites))
+
+# Fit the linear model with Sentiment as the predictor for price change
+lm_model <- lm(price_change ~ Sentiment + sent_2 + week +favorites , 
+               data = amazon_merged_data, 
+               na.action = na.omit)
+
+# Display model summary
+summary(lm_model)
+
+
+# Display model summary
+summary(lm_model)
+```
+
+```{r}
+forecast <- predict(var_model, n.ahead = 1)
+print(forecast)
+```
+
 
 ```{r}
 library(ggplot2)
